@@ -40,7 +40,7 @@
         const CAMERA_POSITION = {
             lat: 18.993864,
             lng: 72.820838,
-            height: 10000 // meters (approximately 40 stories)
+            height: 140 // meters (approximately 40 stories)
         };
 
         // Sample CSV data (frame,timestamp,bearing,tilt,zoom)
@@ -130,14 +130,26 @@ frame,timestamp,bearing,tilt,zoom
         // MapTiler API token - replace with your token from https://cloud.maptiler.com/account/keys/
         const MAPTILER_KEY = 'GqScGKFa73cKg05UxaRX';
 
+        // Get initial frame data
+        const initialFrame = frameData[0];
+        
+        // Calculate initial target point based on height and tilt
+        const initialTargetDistance = CAMERA_POSITION.height * Math.tan((90 - initialFrame.tilt) * Math.PI / 180);
+        const initialBearingRad = initialFrame.bearing * Math.PI / 180;
+        
+        const initialTargetPoint = {
+            lng: CAMERA_POSITION.lng + (initialTargetDistance * Math.sin(initialBearingRad) / (111320 * Math.cos(CAMERA_POSITION.lat * Math.PI / 180))),
+            lat: CAMERA_POSITION.lat + (initialTargetDistance * Math.cos(initialBearingRad) / 111320)
+        };
+
         // Initialize map with camera perspective
         const map = new maplibregl.Map({
             container: 'map',
             style: `https://api.maptiler.com/maps/streets/style.json?key=${MAPTILER_KEY}`,
-            center: [CAMERA_POSITION.lng, CAMERA_POSITION.lat],
-            zoom: 15,
-            pitch: 60,
-            bearing: 0,
+            center: [initialTargetPoint.lng, initialTargetPoint.lat],
+            zoom: initialFrame.zoom,
+            pitch: initialFrame.tilt,
+            bearing: initialFrame.bearing,
             antialias: true
         });
 
@@ -192,12 +204,11 @@ frame,timestamp,bearing,tilt,zoom
                 frame.timestamp >= currentTime
             ) || frameData[frameData.length - 1];
 
-            // Calculate the point the camera is looking at based on bearing and tilt
-            const targetDistance = 1500; // meters - adjust based on your needs
+            // Calculate the point the camera is looking at based on bearing, tilt, and height
+            const targetDistance = CAMERA_POSITION.height * Math.tan((90 - currentFrame.tilt) * Math.PI / 180);
             const bearingRad = currentFrame.bearing * Math.PI / 180;
-            const tiltRad = currentFrame.tilt * Math.PI / 180;
             
-            // Calculate target point
+            // Calculate target point considering camera height
             const targetPoint = {
                 lng: CAMERA_POSITION.lng + (targetDistance * Math.sin(bearingRad) / (111320 * Math.cos(CAMERA_POSITION.lat * Math.PI / 180))),
                 lat: CAMERA_POSITION.lat + (targetDistance * Math.cos(bearingRad) / 111320)
@@ -207,7 +218,7 @@ frame,timestamp,bearing,tilt,zoom
             map.easeTo({
                 center: [targetPoint.lng, targetPoint.lat],
                 zoom: currentFrame.zoom,
-                pitch: 60,
+                pitch: currentFrame.tilt,
                 bearing: currentFrame.bearing,
                 duration: 0
             });
