@@ -1,0 +1,57 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Four Seasons"
+      },
+      "geometry": {
+        "coordinates": [
+          72.82083815957722,
+          18.993864326924495
+        ],
+        "type": "Point"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Race Course"
+      },
+      "geometry": {
+        "coordinates": [
+          72.82020470909217,
+          18.984511618321548
+        ],
+        "type": "Point"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Madhuli Building"
+      },
+      "geometry": {
+        "coordinates": [
+          72.81241351918527,
+          18.989038919605278
+        ],
+        "type": "Point"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Haji Ali Dargah"
+      },
+      "geometry": {
+        "coordinates": [
+          72.80893836904954,
+          18.98265812142172
+        ],
+        "type": "Point"
+      }
+    }
+  ]
+} 
