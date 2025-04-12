@@ -43,6 +43,63 @@
             height: 140 // meters (approximately 40 stories)
         };
 
+        const geojsonFeatures = {
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Four Seasons"
+      },
+      "geometry": {
+        "coordinates": [
+          72.82083815957722,
+          18.993864326924495
+        ],
+        "type": "Point"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Race Course"
+      },
+      "geometry": {
+        "coordinates": [
+          72.82020470909217,
+          18.984511618321548
+        ],
+        "type": "Point"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Madhuli Building"
+      },
+      "geometry": {
+        "coordinates": [
+          72.81241351918527,
+          18.989038919605278
+        ],
+        "type": "Point"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Haji Ali Dargah"
+      },
+      "geometry": {
+        "coordinates": [
+          72.80893836904954,
+          18.98265812142172
+        ],
+        "type": "Point"
+      }
+    }
+  ]
+};
         // Sample CSV data (frame,timestamp,bearing,tilt,zoom)
         const csvData = `
 frame,timestamp,bearing,tilt,zoom
@@ -163,10 +220,10 @@ frame,timestamp,bearing,tilt,zoom
             });
             map.setTerrain({ 'source': 'terrain', 'exaggeration': 1.5 });
 
-            // Add 3D buildings
+            // Add 3D buildings using existing openmaptiles source
             map.addLayer({
                 'id': '3d-buildings',
-                'source': 'composite',
+                'source': 'openmaptiles',
                 'source-layer': 'building',
                 'type': 'fill-extrusion',
                 'minzoom': 13,
@@ -193,11 +250,81 @@ frame,timestamp,bearing,tilt,zoom
                     'fill-extrusion-opacity': 0.8
                 }
             });
+
+            // Add GeoJSON source
+            map.addSource('points', {
+                'type': 'geojson',
+                'data': geojsonFeatures
+            });
+
+            // Add circle layer for when video is playing
+            map.addLayer({
+                'id': 'points-playing',
+                'type': 'circle',
+                'source': 'points',
+                'paint': {
+                    'circle-radius': 3,
+                    'circle-color': '#ffffff',
+                    'circle-opacity': 0.7
+                },
+                'layout': {
+                    'visibility': 'visible'
+                }
+            });
+
+            // Add circle layer for paused state (instead of markers)
+            map.addLayer({
+                'id': 'points-paused',
+                'type': 'circle',
+                'source': 'points',
+                'paint': {
+                    'circle-radius': 8,
+                    'circle-color': '#ff0000',
+                    'circle-opacity': 0.8,
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ffffff'
+                },
+                'layout': {
+                    'visibility': 'none'
+                }
+            });
+
+            // Handle click events on the paused markers
+            map.on('click', 'points-paused', (e) => {
+                if (e.features.length > 0) {
+                    const coordinates = e.features[0].geometry.coordinates.slice();
+                    const name = e.features[0].properties.name;
+                    
+                    new maplibregl.Popup()
+                        .setLngLat(coordinates)
+                        .setHTML(`<h3>${name}</h3>`)
+                        .addTo(map);
+                }
+            });
+
+            // Change cursor to pointer when hovering over paused markers
+            map.on('mouseenter', 'points-paused', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseleave', 'points-paused', () => {
+                map.getCanvas().style.cursor = '';
+            });
+        });
+
+        // Update video playback handler to toggle point styles
+        const video = document.getElementById('camera-feed');
+        
+        video.addEventListener('play', () => {
+            map.setLayoutProperty('points-playing', 'visibility', 'visible');
+            map.setLayoutProperty('points-paused', 'visibility', 'none');
+        });
+
+        video.addEventListener('pause', () => {
+            map.setLayoutProperty('points-playing', 'visibility', 'none');
+            map.setLayoutProperty('points-paused', 'visibility', 'visible');
         });
 
         // Update video playback handler for perspective view
-        const video = document.getElementById('camera-feed');
-        
         video.addEventListener('timeupdate', () => {
             const currentTime = video.currentTime;
             const currentFrame = frameData.find(frame => 
