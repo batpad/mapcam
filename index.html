@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapCam Viewer</title>
+    <script src='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
+    <link href='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css' rel='stylesheet' />
+    <style>
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        #video-container {
+            flex: 1;
+            padding: 10px;
+        }
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+        video {
+            width: 100%;
+            max-height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="video-container">
+            <video id="camera-feed" controls>
+                <source src="testvideo.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+        <div id="map"></div>
+    </div>
+    <script>
+        // Camera position (Empire State Building as example)
+        const CAMERA_POSITION = {
+            lat: 40.7484,
+            lng: -73.9857,
+            height: 381 // meters (approximately 40 stories)
+        };
+
+        // Sample CSV data (frame,timestamp,bearing,tilt,zoom)
+        const csvData = `
+frame,timestamp,bearing,tilt,zoom
+0,0.0,0,45,14
+30,1.0,45,40,14.5
+60,2.0,90,35,15
+90,3.0,135,30,14.8
+120,4.0,180,45,14.2
+`;
+
+        // Parse CSV data
+        const frameData = csvData.trim().split('\n')
+            .slice(1) // Skip header
+            .map(line => {
+                const [frame, timestamp, bearing, tilt, zoom] = line.split(',');
+                return {
+                    frame: parseInt(frame),
+                    timestamp: parseFloat(timestamp),
+                    bearing: parseFloat(bearing),
+                    tilt: parseFloat(tilt),
+                    zoom: parseFloat(zoom)
+                };
+            });
+
+        // Initialize map with camera perspective
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://api.maptiler.com/maps/basic-v2/style.json?key=GqScGKFa73cKg05UxaRX', // Replace with your key
+            center: [CAMERA_POSITION.lng, CAMERA_POSITION.lat],
+            zoom: 15,
+            pitch: 60,  // Start with a tilted view
+            bearing: 0,
+            antialias: true, // Enables smoother rendering for 3D
+            camera: {
+                position: [
+                    CAMERA_POSITION.lng,
+                    CAMERA_POSITION.lat,
+                    CAMERA_POSITION.height
+                ],
+            }
+        });
+
+        // Remove the camera marker code block since we don't need it anymore
+        map.on('load', () => {
+            // Enable 3D terrain if available
+            map.addSource('mapbox-dem', {
+                'type': 'raster-dem',
+                'url': 'https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=GqScGKFa73cKg05UxaRX',
+                'tileSize': 512,
+                'maxzoom': 14
+            });
+            map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
+        });
+
+        // Update video playback handler for perspective view
+        const video = document.getElementById('camera-feed');
+        
+        video.addEventListener('timeupdate', () => {
+            const currentTime = video.currentTime;
+            const currentFrame = frameData.find(frame => 
+                frame.timestamp >= currentTime
+            ) || frameData[frameData.length - 1];
+
+            // Calculate the point the camera is looking at based on bearing and tilt
+            const targetDistance = 1500; // meters - adjust based on your needs
+            const bearingRad = currentFrame.bearing * Math.PI / 180;
+            const tiltRad = currentFrame.tilt * Math.PI / 180;
+            
+            // Calculate target point
+            const targetPoint = {
+                lng: CAMERA_POSITION.lng + (targetDistance * Math.sin(bearingRad) / (111320 * Math.cos(CAMERA_POSITION.lat * Math.PI / 180))),
+                lat: CAMERA_POSITION.lat + (targetDistance * Math.cos(bearingRad) / 111320)
+            };
+
+            // Update map view
+            map.easeTo({
+                center: [targetPoint.lng, targetPoint.lat],
+                zoom: currentFrame.zoom,
+                pitch: 60,
+                bearing: currentFrame.bearing,
+                duration: 0
+            });
+        });
+    </script>
+</body>
+</html> 
